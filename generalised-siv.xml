@@ -1,0 +1,115 @@
+<?xml version="1.0"?>
+<!DOCTYPE rfc PUBLIC "-//IETF//DTD RFC 2629//EN"
+"http://xml2rfc.tools.ietf.org/authoring/rfc2629.dtd" [
+<!ENTITY RFC2119 PUBLIC '' 'http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml'>
+]>
+
+<?xml-stylesheet type='text/xsl' href='http://xml2rfc.tools.ietf.org/authoring/rfc2629.xslt' ?>
+<?rfc toc="yes"?>
+<?rfc tocompact="yes"?>
+<?rfc tocdepth="5"?>
+<?rfc tocindent="yes"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes"?>
+<?rfc comments="yes"?>
+<?rfc inline="yes"?>
+<?rfc compact="yes"?>
+<?rfc subcompact="no"?>
+<?rfc strict="yes"?>
+<?rfc iprnotified="no"?>
+<?rfc private="Draft"?>
+
+<rfc category="std" docName="draft-madden-generalised-siv-01" ipr="trust200902">
+    <front>
+        <title abbrev="Generalised SIV">Generalised Synthetic IV for non-AES ciphers and MACs</title>
+
+        <author initials="N.E." surname="Madden" fullname="Neil Madden">
+            <organization>ForgeRock</organization>
+            <address>
+                <postal>
+                    <street>Broad Quay House</street>
+                    <street>Prince Street</street>
+                    <city>Bristol</city>
+                    <code>BS1 4DJ</code>
+                    <country>United Kingdom</country>
+                </postal>
+                <email>neil.madden@forgerock.com</email>
+                <uri>https://neilmadden.blog/</uri>
+            </address>
+        </author>
+
+        <date day="4" month="November" year="2018"/>
+
+        <area>Security</area>
+        <!-- <workgroup>CFRG</workgroup> -->
+
+        <keyword>Internet-Draft</keyword>
+
+        <abstract>
+            <t>
+                This document specifies how the Synthetic Initialization Vector (SIV) block cipher
+                mode of operation can be adapted to non-AES ciphers and message authentication
+                codes (MACs), with block sizes and MAC tag sizes other than 16 octets. Concrete
+                instantiations are defined using the XChaCha20 nonce-extended stream cipher
+                combined with HMAC-SHA256.
+            </t>
+        </abstract>
+    </front>
+
+    <middle>
+        <section anchor="intro" title="Introduction">
+            <t>...</t>
+
+            <section title="Requirements Terminology">
+                <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+                    "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+                    interpreted as described in <xref target="RFC2119" />.</t>
+            </section>
+
+            <section title="Motivation">
+                <t>Foo</t>
+            </section>
+
+            <section anchor="IANA" title="IANA considerations">
+                <?rfc subcompact="yes" ?>
+                <t>...</t>
+            </section>
+
+            <section anchor="security" title="Security Considerations">
+                <t>Blah</t>
+            </section>
+        </section>
+
+    </middle>
+
+    <back>
+        <references title="Normative References">
+            &RFC2119;
+        </references>
+
+
+        <references title="Informative References">
+          <reference anchor="SIV">
+              <front>
+                  <title>Deterministic Authenticated-Encryption. A Provable-Security Treatment of the Key-Wrap Problem.</title>
+                  <author surname="Rogaway" initials="P.">
+                      <organization>University of California at Davis</organization>
+                  </author>
+                  <author surname="Shrimpton" initials="T.">
+                      <organization>Portland State University</organization>
+                  </author>
+                  <date month="August" day="20" year="2007"/>
+              </front>
+              <seriesInfo name="IACR" value="ePrint 2006/221"/>
+              <format target="https://eprint.iacr.org/2006/221.pdf" type="PDF" />
+          </reference>
+                
+        </references>
+
+        <section anchor="TestCases" title="Test Cases">
+            <t>...</t>
+        </section>
+    </back>
+</rfc>
+
+
