@@ -15,39 +15,39 @@ Abstract
    This document specifies how the Synthetic Initialization Vector (SIV)
    block cipher mode of operation can be adapted to non-AES ciphers and
    message authentication codes (MACs), with block sizes and MAC tag
-   sizes other than 16 octets.  Concrete instantiations are defined
-   using the XChaCha20 nonce-extended stream cipher combined with HMAC-
-   SHA256.
+   sizes other than 128 bits.  Concrete instantiations are defined using
+   the XChaCha20 nonce-extended stream cipher combined with HMAC-SHA256.
 
 Table of Contents
 
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   1
-     1.1.  Requirements Terminology  . . . . . . . . . . . . . . . .   1
-     1.2.  Motivation  . . . . . . . . . . . . . . . . . . . . . . .   1
-     1.3.  IANA considerations . . . . . . . . . . . . . . . . . . .   2
-     1.4.  Security Considerations . . . . . . . . . . . . . . . . .   2
-   2.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   2
-     2.1.  Normative References  . . . . . . . . . . . . . . . . . .   2
-     2.2.  Informative References  . . . . . . . . . . . . . . . . .   2
-   Appendix A.  Test Cases . . . . . . . . . . . . . . . . . . . . .   2
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   2
+     1.1.  Requirements Terminology  . . . . . . . . . . . . . . . .   2
+     1.2.  Motivation  . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  The Generic SIV Construction  . . . . . . . . . . . . . . . .   3
+     2.1.  Encryption  . . . . . . . . . . . . . . . . . . . . . . .   3
+     2.2.  Decryption  . . . . . . . . . . . . . . . . . . . . . . .   4
+     2.3.  Generalised S2V . . . . . . . . . . . . . . . . . . . . .   5
+     2.4.  AES-SIV . . . . . . . . . . . . . . . . . . . . . . . . .   7
+   3.  IANA considerations . . . . . . . . . . . . . . . . . . . . .   7
+     3.1.  AEAD_XCHACHA20_SIV_HMAC_SHA256  . . . . . . . . . . . . .   8
+   4.  Security Considerations . . . . . . . . . . . . . . . . . . .   8
+   5.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   8
+     5.1.  Normative References  . . . . . . . . . . . . . . . . . .   8
+     5.2.  Informative References  . . . . . . . . . . . . . . . . .   9
+   Appendix A.  Test Cases . . . . . . . . . . . . . . . . . . . . .   9
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   9
 
 1.  Introduction
 
-   ...
-
-1.1.  Requirements Terminology
-
-   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
-   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
-   document are to be interpreted as described in [RFC2119].
-
-1.2.  Motivation
-
-   Foo
-
-
-
+   The Synthetic Initialization Vector (SIV) block cipher mode of
+   operation [RFC5297] provides either deterministic authenticated
+   encryption (DAE) or nonce-reuse misuse-resistant authenticated
+   encryption (MRAE) [DAE].  It was originally specified for the
+   combination of AES-CMAC for authenticity and AES-CTR for
+   confidentiality.  The 128-bit AES-CMAC tag is used as the (synthetic)
+   IV for AES-CTR.  This document show how to apply SIV mode to ciphers
+   and MACs with IV and tag lengths other than 128 bits, including where
+   the IV and tag length may differ.
 
 
 
@@ -58,28 +58,425 @@ Madden                     Expires May 8, 2019                  [Page 1]
                              Generalised SIV               November 2018
 
 
-1.3.  IANA considerations
+1.1.  Requirements Terminology
 
-   ...
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC8174] when, and only when, they appear in all capitals, as
+   shown here.
 
-1.4.  Security Considerations
+1.2.  Motivation
+
+   Common IV-based authenticated encryption modes of operation require a
+   unique IV (or nonce) to be provided on each call to the encryption
+   function with the same key.  If an IV is reused, either by accident
+   or through malicious action, then some combination of the
+   confidentiality and/or authenticity properties is usually lost.  For
+   the popular Galois Counter Mode (GCM) [SP800-38D], NIST states that
+   "a breach of the requirement [...] for the uniqueness of the
+   initialization strings may compromise the security assurance almost
+   entirely" (section 3 and Appendix A).  The SIV mode of operation
+   [RFC5297][SIV], when used with a unique nonce as part of the
+   associated data, provides a measure of protection against nonce
+   reuse.  If a nonce is reused with SIV mode then there is no loss of
+   authenticity, and a minimal loss of confidentiality: an attacker is
+   able to determine only whether the exact same message has been
+   encrypted with the same associated data and nonce using the same key.
+
+   While the SIV mode was specified as a generic composition of an IV-
+   based encryption scheme and a pseudorandom function (PRF), most uses
+   of the mode have concentrated on the one concrete instantiation of
+   the mode given at the time: AES-SIV.  AES-SIV is built entirely from
+   the AES block cipher, using AES-CMAC [RFC4493] as the PRF and AES in
+   CTR mode for confidentiality.  This combination is attractive as it
+   requires only an AES encryption operation to implement all aspects of
+   the mode.  It also has the convenient property that AES-CMAC produces
+   a 128-bit tag, and AES-CTR requires a 128-bit IV, which allows the
+   tag to be used directly as the (synthetic) IV.
+
+   While AES-SIV has many attractive properties, there are good reasons
+   for extending SIV to other ciphers and PRFs.  As stated in the
+   rationale for specifying ChaCha20 and Poly1305 for IETF protocols
+   [RFC8439], overreliance on a single cipher design, however good, may
+   cause difficulties if a weakness is ever discovered in AES.
+   Secondly, AES can be difficult to implement efficiently in software
+   while avoiding timing side-channels.  Finally, there is the simple
+   fact that non-AES ciphers and PRFs exist and will continue to be
+   used, and SIV mode is of independent interest to users of those
+   alternative primitives.
+
+
+
+
+Madden                     Expires May 8, 2019                  [Page 2]
+
+                             Generalised SIV               November 2018
+
+
+2.  The Generic SIV Construction
+
+   The generic SIV construction is defined in terms two primitive
+   functions:
+
+      A PRF, F*, that takes a vector of strings as input.
+
+      A length-preserving IV-based encryption scheme, E.
+
+   The S2V function can be used to build F* from a PRF, F, that takes a
+   single string input.  The generalised version of this function is
+   described in the next section.
+
+   The following constants MUST be defined for any concrete
+   instantiation of E and F*:
+
+      IV_LEN - the length of IV expected by E, in bits.
+
+      TAG_LEN - the length of the output tag produced by F*, in bits.
+
+      PRF_KEY_LEN - the length of key required for F*, in bits.
+
+      CIPHER_KEY_LEN - the length of key required for E, in bits.
+
+   For any choice of E and F*, TAG_LEN MUST be greater than or equal to
+   IV_LEN.
+
+   We denote the encryption operation of E as E.encrypt(key, iv,
+   plaintext), and the decryption operation as E.decrypt(key, iv,
+   ciphertext).
+
+2.1.  Encryption
+
+   Encryption takes as input a key, K, a plaintext P, and zero or more
+   associated data blocks to be authenticated but not encrypted.  The
+   key K MUST be as long as the sum of the key length of F* and the key
+   length of E.  For example, if F* requires a 256-bit key and E
+   requires a 128-bit key, then K MUST be 384 bits long.
+
+   Encryption proceeds as follows.  Firstly, keys K1 and K2 are derived
+   from K by taking the leftmost PRF_KEY_LEN bits of K as K1, and the
+   rightmost CIPHER_KEY_LEN bits of K as K2.  Secondly, the PRF F* is
+   applied to K1, the plaintext P, and all of the n associated data
+   strings AD1, ..., ADn.  This results in an authentication tag, T.
+   The SIV is defined as the leftmost IV_LEN bits of T.  If TAG_LEN =
+   IV_LEN, then T is used in its entirety.  The plaintext P is then
+   encrypted using E, with K2 as the key and SIV as the IV, producing
+
+
+
+
+Madden                     Expires May 8, 2019                  [Page 3]
+
+                             Generalised SIV               November 2018
+
+
+   ciphertext C.  The concatenation of T with C is returned as the
+   output of the function.
+
+   In pseudocode, generalised SIV encryption is as follows:
+
+   SIV-ENCRYPT[F*,E](K, P, AD1, ..., ADn) {
+       K1 = leftmost(K, PRF_KEY_LEN)
+       K2 = rightmost(K, CIPHER_KEY_LEN)
+       T = F*(K1, AD1, ..., ADn, P)
+       SIV = leftmost(T, IV_LEN)
+       C = E.encrypt(K2, SIV, P)
+
+       return T || C
+   }
+
+2.2.  Decryption
+
+   Decryption takes as input a key, K, an authenticated ciphertext Z,
+   and zero or more associated data blocks to be authenticated but not
+   decrypted.
+
+   Keys K1 and K2 are derived as for encryption.  The leftmost TAG_LEN
+   bits of Z are taken as the tag T, while the remaining bits are the
+   ciphertext C.  As for encryption, the SIV is taken as the leftmost
+   IV_LEN bits of T.  The ciphertext C is then decrypted using E with
+   the key K2 and SIV as the IV, producing plaintext P.  The expected
+   authentication tag T' is then computed using F* over the key K1, the
+   associated data AD1, ..., ADn, and the plaintext P.  If T' exactly
+   matches T then the plaintext P is returned.  If T' does not match T
+   then the implementation MUST NOT return P and MUST destroy P and T'
+   and return a failure.  Authentication tag comparisons SHOULD be
+   performed in constant time to avoid leaking the true value of T'
+   through timing differences.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Madden                     Expires May 8, 2019                  [Page 4]
+
+                             Generalised SIV               November 2018
+
+
+   SIV-DECRYPT[F*,E](K, Z, AD1, ..., ADn) {
+       T = leftmost(Z, TAG_LEN)
+       C = rightmost(Z, len(Z) - TAG_LEN)
+       K1 = leftmost(K, PRF_KEY_LEN)
+       K2 = rightmost(K, CIPHER_KEY_LEN)
+       SIV = leftmost(T, IV_LEN)
+
+       P = E.decrypt(K2, SIV, C)
+       T' = F*(K1, AD1, ..., ADn, P)
+
+       if T = T' then
+           return P
+       else
+           destroy P and T'
+           return FAIL
+       fi
+   }
+
+2.3.  Generalised S2V
+
+   SIV requires a PRF that takes a vector of strings as input, while
+   most PRFs in current use are designed to only take a single string.
+   In principle, any unambiguous encoding can be used to convert a
+   vector of inputs into a single string, but SIV defines a particularly
+   efficient encoding provided by the function S2V (for "string to
+   vector") that converts a single-string PRF to a vector input PRF.
+   S2V is defined using bitwise exclusive OR (XOR) and a doubling
+   operation in the finite field GF(2^n) where n is the bit length of
+   the output of the PRF.  For AES-SIV, which uses AES-CMAC as the PRF,
+   this is GF(2^128).  In this section we show how to define S2V for
+   PRFs with different tag lengths.
+
+   Points in the finite field GF(2^n) are represented as n-bit strings
+   a_(n-1) ... a_1 a_0, which can also be seen as binary coefficients
+   for a polynomial f(x) = a_(n-1) * x^(n-1) + ... + a_1 * x + a_0.
+   Multiplication is then defined as the product of two polynomials,
+   with the remainder taken after division by a fixed polynomial.  In
+   S2V, the fixed polynomial is the lexicographically first minimum-
+   weight primitive polynomial [SIV] (section 2).  For GF(2^128), such a
+   primitive polynomial is:
+
+   f(x) = x^128 + x^7 + x^2 + x + 1
+
+   Primitive polynomials for other fields can be found in published
+   tables, such as [HPL-98-135].  The following polynomials are
+   indicated for common PRF output sizes:
+
+
+
+
+
+Madden                     Expires May 8, 2019                  [Page 5]
+
+                             Generalised SIV               November 2018
+
+
+            +-----------+-------------------------------------+
+            | Field     | Primitive Polynomial                |
+            +-----------+-------------------------------------+
+            | GF(2^64)  | f(x) = x^64 + x^4 + x^3 + x + 1     |
+            | GF(2^96)  | f(x) = x^96 + x^10 + x^9 + x^6 + 1  |
+            | GF(2^128) | f(x) = x^128 + x^7 + x^2 + x + 1    |
+            | GF(2^160) | f(x) = x^160 + x^5 + x^3 + x^2 + 1  |
+            | GF(2^192) | f(x) = x^192 + x^7 + x^2 + x + 1    |
+            | GF(2^224) | f(x) = x^224 + x^9 + x^8 + x^3 + 1  |
+            | GF(2^256) | f(x) = x^256 + x^10 + x^5 + x^2 + 1 |
+            | GF(2^384) | f(x) = x^384 + x^12 + x^3 + x^2 + 1 |
+            | GF(2^512) | f(x) = x^512 + x^8 + x^5 + x^2 + 1  |
+            +-----------+-------------------------------------+
+
+   Doubling for S2V is defined as multiplication with the binary value
+   0^(n-2)10 (i.e., the number 2 represented as an n-bit binary string).
+   The doubling operation can be efficiently implemented as a left-shift
+   operation followed by a conditional XOR with an n-bit constant
+   derived from the binary coefficients of the primitive polynomial.
+   The condition being whether the most significant bit of the value
+   being shifted off is 1.  For GF(2^128), the constant is
+   0^(120)10000111, with one bits corresponding to x^7, x^2, x and 1
+   respectively.  The following table lists the constants for common PRF
+   output sizes in binary and hexadecimal form.  Leading zero octets are
+   omitted from the hexadecimal format.
+
+   +-----------+----------------------------+-------------------------+
+   | Field     | Doubling Constant - Binary | Doubling Constant - Hex |
+   +-----------+----------------------------+-------------------------+
+   | GF(2^64)  |                0^(59)11011 |                    0x1b |
+   | GF(2^92)  |          0^(150)1100100001 |                  0x0321 |
+   | GF(2^128) |            0^(120)10000111 |                    0x87 |
+   | GF(2^160) |              0^(154)101101 |                    0x2d |
+   | GF(2^192) |            0^(184)10000111 |                    0x87 |
+   | GF(2^224) |          0^(214)1100001001 |                  0x0309 |
+   | GF(2^256) |         0^(245)10000100101 |                  0x0425 |
+   | GF(2^384) |       0^(371)1000000001101 |                  0x100d |
+   | GF(2^256) |           0^(503)100100101 |                  0x0125 |
+   +-----------+----------------------------+-------------------------+
+
+   It is recommended that the conditional XOR be performed in constant
+   time.  A constant time bit-sliced implementation is provided in
+   Appendix A.
+
+   The S2V algorithm parameterised over a particular PRF, F, written
+   S2V[F] is as follows, where TAG_LEN is the output size of the PRF in
+   bits, dbl(x) is the appropriate doubling operation for TAG_LEN, and
+   xorend is defined as in [RFC5297].  The constant <zero> is the
+
+
+
+Madden                     Expires May 8, 2019                  [Page 6]
+
+                             Generalised SIV               November 2018
+
+
+   TAG_LEN sequence of all zero bits, and <one> is TAG_LEN-1 zero bits
+   followed by a single 1 bit.
+
+   S2V[F](K, S1, ..., Sn) {
+       if n = 0 then
+           return F(K, <one>)
+       fi
+       D = F(K, <zero>)
+       for i = 1 to n-1 do
+           D = dbl(D) xor F(K, Si)
+       done
+       if len(Sn) >= TAG_LEN then
+           T = Sn xorend D
+       else
+           T = dbl(D) xor pad(Sn)
+       fi
+       return F(K, T)
+   }
+
+2.4.  AES-SIV
+
+   This section is non-normative.
+
+   The original AES-SIV mode of [RFC5297] can be seen as an
+   instantiation of the generic SIV construction in this document, with
+   the following parameters:
+
+      F* = S2V[AES-CMAC]
+
+      E = AES-CTR where the 31st and 63rd bits of the IV are zeroed
+      prior to use as described in [RFC5297] section 2.5.
+
+      PRF_KEY_LEN = 128, 192 or 256 bits
+
+      CIPHER_KEY_LEN = 128, 192 or 256 bits (to match PRF_KEY_LEN).
+
+      IV_LEN = TAG_LEN = 128 bits.
+
+3.  IANA considerations
+
+   This section registers AEAD algorithms as per the registry
+   established in [RFC5116].
+
+   [[CREF1: Need to get IANA to assign numbers for these. --N.  Madden]]
+
+
+
+
+
+
+
+Madden                     Expires May 8, 2019                  [Page 7]
+
+                             Generalised SIV               November 2018
+
+
+3.1.  AEAD_XCHACHA20_SIV_HMAC_SHA256
+
+   The XCHACHA20-SIV-HMAC-SHA256 algorithm is an instantiation of the
+   generalised SIV mode described in Sections 2.1 and 2.2 with the
+   XChaCha20 extended-nonce stream cipher [I-D.arciszewski-xchacha] and
+   HMAC-SHA256 as the PRF.  The following constants apply to this mode:
+
+      PRF_KEY_LEN = 256 bits
+      CIPHER_KEY_LEN = 256 bits
+      IV_LEN = 192 bits
+      TAG_LEN = 256 bits
+
+   The input and output lengths for AEAD_XCHACHA20_SIV_HMAC_SHA256 as
+   defined by [RFC5116] are:
+
+      K_LEN is 64 octets.
+      P_MAX is ...
+      A_MAX is unlimited.
+      N_MIN is 1 octet.
+      N_MAX is unlimited.
+      C_MAX is ....
+
+4.  Security Considerations
 
    Blah
 
-2.  References
+5.  References
 
-2.1.  Normative References
+5.1.  Normative References
 
-   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
-              Requirement Levels", BCP 14, RFC 2119,
-              DOI 10.17487/RFC2119, March 1997,
-              <https://www.rfc-editor.org/info/rfc2119>.
+   [I-D.arciszewski-xchacha]
+              Arciszewski, S., "XChaCha: eXtended-nonce ChaCha and
+              AEAD_XChaCha20_Poly1305", draft-arciszewski-xchacha-02
+              (work in progress), October 2018.
 
-2.2.  Informative References
+   [RFC5116]  McGrew, D., "An Interface and Algorithms for Authenticated
+              Encryption", RFC 5116, DOI 10.17487/RFC5116, January 2008,
+              <https://www.rfc-editor.org/info/rfc5116>.
 
-   [SIV]      Rogaway, P. and T. Shrimpton, "Deterministic
+   [RFC5297]  Harkins, D., "Synthetic Initialization Vector (SIV)
+              Authenticated Encryption Using the Advanced Encryption
+              Standard (AES)", RFC 5297, DOI 10.17487/RFC5297, October
+              2008, <https://www.rfc-editor.org/info/rfc5297>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+
+
+
+Madden                     Expires May 8, 2019                  [Page 8]
+
+                             Generalised SIV               November 2018
+
+
+5.2.  Informative References
+
+   [DAE]      Rogaway, P. and T. Shrimpton, "Deterministic
               Authenticated-Encryption. A Provable-Security Treatment of
               the Key-Wrap Problem.", IACR ePrint 2006/221, August 2007.
+
+   [HPL-98-135]
+              Seroussi, G., "Table of Low-Weight Binary Irreducible
+              Polynomials", HPL HPL-98-135, August 1998.
+
+   [RFC4493]  Song, JH., Poovendran, R., Lee, J., and T. Iwata, "The
+              AES-CMAC Algorithm", RFC 4493, DOI 10.17487/RFC4493, June
+              2006, <https://www.rfc-editor.org/info/rfc4493>.
+
+   [RFC8439]  Nir, Y. and A. Langley, "ChaCha20 and Poly1305 for IETF
+              Protocols", RFC 8439, DOI 10.17487/RFC8439, June 2018,
+              <https://www.rfc-editor.org/info/rfc8439>.
+
+   [SIV]      Rogaway, P. and T. Shrimpton, "The SIV Mode of Operation
+              for Deterministic Authenticated-Encryption (Key Wrap) and
+              Misuse-Resistant Nonce-Based Authenticated-Encryption.",
+              August 2007.
+
+   [SP800-38D]
+              Dworkin, M., "Recommendation for Block Cipher Modes of
+              Operation: Galois/Counter Mode (GCM) and GMAC.", NIST
+              Special Publication 800-38D, November 2007.
 
 Appendix A.  Test Cases
 
@@ -104,9 +501,4 @@ Author's Address
 
 
 
-
-
-
-
-
-Madden                     Expires May 8, 2019                  [Page 2]
+Madden                     Expires May 8, 2019                  [Page 9]
