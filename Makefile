@@ -1,4 +1,4 @@
-VERSION=01
+VERSION=00
 BASENAME=draft-madden-generalised-siv-$(VERSION)
 
 # Use 'pip install xml2rfc'
