@@ -7,7 +7,7 @@
                                                         November 4, 2018
 
 
-         Generalised Synthetic IV for non-AES ciphers and MACs
+            Synthetic IV (SIV) for non-AES ciphers and MACs
                     draft-madden-generalised-siv-01
 
 Abstract
@@ -28,14 +28,16 @@ Table of Contents
      2.2.  Decryption  . . . . . . . . . . . . . . . . . . . . . . .   4
      2.3.  Generalised S2V . . . . . . . . . . . . . . . . . . . . .   5
      2.4.  AES-SIV . . . . . . . . . . . . . . . . . . . . . . . . .   7
-   3.  IANA considerations . . . . . . . . . . . . . . . . . . . . .   7
-     3.1.  AEAD_XCHACHA20_SIV_HMAC_SHA256  . . . . . . . . . . . . .   8
-   4.  Security Considerations . . . . . . . . . . . . . . . . . . .   8
-   5.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   8
-     5.1.  Normative References  . . . . . . . . . . . . . . . . . .   8
-     5.2.  Informative References  . . . . . . . . . . . . . . . . .   9
-   Appendix A.  Test Cases . . . . . . . . . . . . . . . . . . . . .   9
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   9
+   3.  XChaCha20-HMAC-SHA256-SIV . . . . . . . . . . . . . . . . . .   7
+   4.  IANA considerations . . . . . . . . . . . . . . . . . . . . .   8
+     4.1.  AEAD_XCHACHA20_SIV_HMAC_SHA256  . . . . . . . . . . . . .   8
+   5.  Security Considerations . . . . . . . . . . . . . . . . . . .   9
+   6.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  10
+     6.1.  Normative References  . . . . . . . . . . . . . . . . . .  10
+     6.2.  Informative References  . . . . . . . . . . . . . . . . .  10
+   Appendix A.  Test Vectors . . . . . . . . . . . . . . . . . . . .  11
+     A.1.  Nonce-Based Authenticated Encryption Example  . . . . . .  11
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  13
 
 1.  Introduction
 
@@ -44,12 +46,10 @@ Table of Contents
    encryption (DAE) or nonce-reuse misuse-resistant authenticated
    encryption (MRAE) [DAE].  It was originally specified for the
    combination of AES-CMAC for authenticity and AES-CTR for
-   confidentiality.  The 128-bit AES-CMAC tag is used as the (synthetic)
-   IV for AES-CTR.  This document show how to apply SIV mode to ciphers
-   and MACs with IV and tag lengths other than 128 bits, including where
-   the IV and tag length may differ.
-
-
+   confidentiality.  The 128-bit AES-CMAC tag is used as the 128-bit
+   (synthetic) IV for AES-CTR.  This document show how to apply SIV mode
+   to ciphers and MACs with IV and tag lengths other than 128 bits,
+   including where the IV and tag length may differ.
 
 
 
@@ -84,7 +84,7 @@ Madden                     Expires May 8, 2019                  [Page 1]
    able to determine only whether the exact same message has been
    encrypted with the same associated data and nonce using the same key.
 
-   While the SIV mode was specified as a generic composition of an IV-
+   While the SIV mode is specified as a generic composition of an IV-
    based encryption scheme and a pseudorandom function (PRF), most uses
    of the mode have concentrated on the one concrete instantiation of
    the mode given at the time: AES-SIV.  AES-SIV is built entirely from
@@ -97,7 +97,7 @@ Madden                     Expires May 8, 2019                  [Page 1]
 
    While AES-SIV has many attractive properties, there are good reasons
    for extending SIV to other ciphers and PRFs.  As stated in the
-   rationale for specifying ChaCha20 and Poly1305 for IETF protocols
+   rationale for adopting ChaCha20 and Poly1305 for IETF protocols
    [RFC8439], overreliance on a single cipher design, however good, may
    cause difficulties if a weakness is ever discovered in AES.
    Secondly, AES can be difficult to implement efficiently in software
@@ -119,9 +119,9 @@ Madden                     Expires May 8, 2019                  [Page 2]
    The generic SIV construction is defined in terms two primitive
    functions:
 
-      A PRF, F*, that takes a vector of strings as input.
+   1.  A PRF, F*, that takes a vector of strings as input.
 
-      A length-preserving IV-based encryption scheme, E.
+   2.  A length-preserving IV-based encryption scheme, E.
 
    The S2V function can be used to build F* from a PRF, F, that takes a
    single string input.  The generalised version of this function is
@@ -130,7 +130,7 @@ Madden                     Expires May 8, 2019                  [Page 2]
    The following constants MUST be defined for any concrete
    instantiation of E and F*:
 
-      IV_LEN - the length of IV expected by E, in bits.
+      IV_LEN - the length of IV/nonce expected by E, in bits.
 
       TAG_LEN - the length of the output tag produced by F*, in bits.
 
@@ -148,10 +148,10 @@ Madden                     Expires May 8, 2019                  [Page 2]
 2.1.  Encryption
 
    Encryption takes as input a key, K, a plaintext P, and zero or more
-   associated data blocks to be authenticated but not encrypted.  The
+   associated data headers to be authenticated but not encrypted.  The
    key K MUST be as long as the sum of the key length of F* and the key
    length of E.  For example, if F* requires a 256-bit key and E
-   requires a 128-bit key, then K MUST be 384 bits long.
+   requires a 128-bit key, then K must be 384 bits long.
 
    Encryption proceeds as follows.  Firstly, keys K1 and K2 are derived
    from K by taking the leftmost PRF_KEY_LEN bits of K as K1, and the
@@ -339,7 +339,9 @@ Madden                     Expires May 8, 2019                  [Page 6]
 
 
    TAG_LEN sequence of all zero bits, and <one> is TAG_LEN-1 zero bits
-   followed by a single 1 bit.
+   followed by a single 1 bit.  The function pad(X) pads the input to
+   TAG_LEN bits by appending a single 1 bit followed by as many 0 bits
+   as necessary.
 
    S2V[F](K, S1, ..., Sn) {
        if n = 0 then
@@ -376,16 +378,14 @@ Madden                     Expires May 8, 2019                  [Page 6]
 
       IV_LEN = TAG_LEN = 128 bits.
 
-3.  IANA considerations
+3.  XChaCha20-HMAC-SHA256-SIV
 
-   This section registers AEAD algorithms as per the registry
-   established in [RFC5116].
-
-   [[CREF1: Need to get IANA to assign numbers for these. --N.  Madden]]
-
-
-
-
+   ChaCha20 is a stream cipher that has been adopted for use in IETF
+   protocols by [RFC8439].  It has several attractive properties, most
+   notably that it can be implemented efficiently in software and is
+   relatively easy to make resistant to cache-timing side-channel
+   attacks.  As originally specified, ChaCha20 takes a 256-bit key and a
+   64-bit nonce, which was extended to 96-bits when adopted by the IETF.
 
 
 
@@ -394,35 +394,142 @@ Madden                     Expires May 8, 2019                  [Page 7]
                              Generalised SIV               November 2018
 
 
-3.1.  AEAD_XCHACHA20_SIV_HMAC_SHA256
+   A 96-bit nonce is too small to be safely generated randomly (or
+   pseudorandomly as in SIV) without artificially limiting the number of
+   messages that can be encrypted with a single key.  To address this
+   problem, an extended nonce variant known as XChaCha20
+   [I-D.arciszewski-xchacha] has been proposed, which increase the nonce
+   to 192-bits.  This makes it an excellent choice for an SIV
+   instantiation, providing a MRAE cipher mode alternative to AES.
 
-   The XCHACHA20-SIV-HMAC-SHA256 algorithm is an instantiation of the
-   generalised SIV mode described in Sections 2.1 and 2.2 with the
+   In principle, any PRF that produces at least a 192-bit output could
+   be used with XChaCha20.  For concreteness, we specify the use of HMAC
+   [RFC2104] with the SHA-256 secure hash function [RFC6234] as HMAC-
+   SHA256 is widely implemented.  The S2V function of section 2.3 is
+   used to allow HMAC-SHA256 to take a vector of strings as input, with
+   the primitive polynomial for GF(2^256) used for point doubling and
+   the leftmost 192 bits of the S2V[HMAC-SHA256] tag used as the
+   synthetic IV for XChaCha20.
+
+   The encryption and decryption procedures are as described in sections
+   2.1 and 2.2 above, with the following constant values:
+
+      PRF_KEY_LEN = 256 bits.
+
+      CIPHER_KEY_LEN = 256 bits.
+
+      IV_LEN = 192 bits.
+
+      TAG_LEN = 256 bits.
+
+   Test vectors for XChaCha20-HMAC-SHA256-SIV are provided in
+   Appendix A.
+
+4.  IANA considerations
+
+   This section registers AEAD algorithms as per the registry
+   established in [RFC5116].  As specified in [RFC5297] section 6, the
+   interface of RFC 5116 only allows a single associated data (AD)
+   component.  When SIV is accessed via this interface, multiple AD
+   components must be marshalled into a single string prior to calling
+   the SIV procedures.
+
+   [[CREF1: Need to get IANA to assign numbers for these. --N.  Madden]]
+
+4.1.  AEAD_XCHACHA20_SIV_HMAC_SHA256
+
+   The AEAD_XCHACHA20_SIV_HMAC_SHA256 algorithm is an instantiation of
+   the generalised SIV mode described in Sections 2.1 and 2.2 with the
    XChaCha20 extended-nonce stream cipher [I-D.arciszewski-xchacha] and
-   HMAC-SHA256 as the PRF.  The following constants apply to this mode:
+   HMAC-SHA256 as the PRF, as described in Section 3.  XChaCha20 uses a
 
-      PRF_KEY_LEN = 256 bits
-      CIPHER_KEY_LEN = 256 bits
-      IV_LEN = 192 bits
-      TAG_LEN = 256 bits
+
+
+Madden                     Expires May 8, 2019                  [Page 8]
+
+                             Generalised SIV               November 2018
+
+
+   32-bit block counter and a 512-bit block size, therefore the maximum
+   size of plaintext that can be encrypted in a single invocation is
+   2^38 octets, around 256 GB.  The ciphertext length is equal to the
+   length of the plaintext plus 32 octets for the HMAC-SHA256
+   authentication tag (of which the leftmost 24 octets comprise the
+   SIV).
 
    The input and output lengths for AEAD_XCHACHA20_SIV_HMAC_SHA256 as
    defined by [RFC5116] are:
 
       K_LEN is 64 octets.
-      P_MAX is ...
+      P_MAX is 2^38 octets.
       A_MAX is unlimited.
       N_MIN is 1 octet.
       N_MAX is unlimited.
-      C_MAX is ....
+      C_MAX is 2^38 + 32 octets.
 
-4.  Security Considerations
+5.  Security Considerations
 
-   Blah
+   The security considerations of [RFC5297] apply here.
 
-5.  References
+   The security proofs for SIV [DAE] require that F* (and F if
+   constructing F* using S2V) behaves as a pseudorandom function (PRF).
+   E must be a length-preserving semantically-secure encryption scheme.
 
-5.1.  Normative References
+   [[CREF2: Section 4 of the DAE reference says that the encryption
+   scheme E (represented by a Greek upper-case pi symbol) is assumed to
+   be length-preserving for simplicity.  I cannot see where this
+   assumption is discharged, so I assume that it is a requirement. --N.
+   Madden]]
+
+   It is RECOMMENDED that SIV mode is always used with a unique random
+   component included as the last element of the header (associated
+   data) to ensure semantic security.  While SIV mode loses a minimal
+   amount of security if this component is omitted (or accidentally
+   reused), an attacker in this case is able to determine if the same
+   plaintext has been encrypted under the same key and with the same
+   associated data.  Depending on the application this may still be a
+   significant loss of confidentiality.  For example, a service that
+   produces yes/no answers to questions would lose all confidentiality
+   of its responses in this case.  The misuse resistance of SIV should
+   be considered a failsafe and not as a way to do without a nonce.
+
+   The requirement that E be length-preserving means that the ciphertext
+   produced by SIV mode will be equal in length to the input plaintext,
+   plus the authentication tag (which is of fixed size for any concrete
+   instantiation of this mode).  If the length of the plaintext on its
+   own may reveal information then care should be taken to obscure this
+
+
+
+Madden                     Expires May 8, 2019                  [Page 9]
+
+                             Generalised SIV               November 2018
+
+
+   prior to encryption -- by padding to a known maximum length, for
+   example.  In the case of the yes/no answer service the English words
+   "yes" and "no" can be distinguished purely by length, to give a
+   simple example.
+
+   In [tightness], Chatterjee, Menezes and Sarkar show an attack on SIV
+   within the multi-user setting.  It is RECOMMENDED that concrete
+   instantiations intended for such use define a MAC_KEY_LENGTH of at
+   least 256 bits or describe other countermeasures.
+
+   [[CREF3: The recommendation for a large MAC_KEY_LENGTH is based on
+   the comment made by Daniel Bleichenbacher to the CFRG mailing list:
+   https://mailarchive.ietf.org/arch/msg/cfrg/bnom-
+   bt5wBPmdQfvbeYcus9gXP0 --N.  Madden]]
+
+   The number of components passed to any invocation of S2V (including
+   the plaintext) must not exceed TAG_LEN - 1.  For example, a 128-bit
+   PRF such as AES-CMAC should allow no more than 127 components.  For
+   XChaCha20-HMAC-SHA256-SIV no more than 255 components should be
+   allowed.
+
+6.  References
+
+6.1.  Normative References
 
    [I-D.arciszewski-xchacha]
               Arciszewski, S., "XChaCha: eXtended-nonce ChaCha and
@@ -442,27 +549,36 @@ Madden                     Expires May 8, 2019                  [Page 7]
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/info/rfc8174>.
 
-
-
-
-Madden                     Expires May 8, 2019                  [Page 8]
-
-                             Generalised SIV               November 2018
-
-
-5.2.  Informative References
+6.2.  Informative References
 
    [DAE]      Rogaway, P. and T. Shrimpton, "Deterministic
               Authenticated-Encryption. A Provable-Security Treatment of
               the Key-Wrap Problem.", IACR ePrint 2006/221, August 2007.
 
+
+
+Madden                     Expires May 8, 2019                 [Page 10]
+
+                             Generalised SIV               November 2018
+
+
    [HPL-98-135]
               Seroussi, G., "Table of Low-Weight Binary Irreducible
               Polynomials", HPL HPL-98-135, August 1998.
 
+   [RFC2104]  Krawczyk, H., Bellare, M., and R. Canetti, "HMAC: Keyed-
+              Hashing for Message Authentication", RFC 2104,
+              DOI 10.17487/RFC2104, February 1997,
+              <https://www.rfc-editor.org/info/rfc2104>.
+
    [RFC4493]  Song, JH., Poovendran, R., Lee, J., and T. Iwata, "The
               AES-CMAC Algorithm", RFC 4493, DOI 10.17487/RFC4493, June
               2006, <https://www.rfc-editor.org/info/rfc4493>.
+
+   [RFC6234]  Eastlake 3rd, D. and T. Hansen, "US Secure Hash Algorithms
+              (SHA and SHA-based HMAC and HKDF)", RFC 6234,
+              DOI 10.17487/RFC6234, May 2011,
+              <https://www.rfc-editor.org/info/rfc6234>.
 
    [RFC8439]  Nir, Y. and A. Langley, "ChaCha20 and Poly1305 for IETF
               Protocols", RFC 8439, DOI 10.17487/RFC8439, June 2018,
@@ -478,11 +594,141 @@ Madden                     Expires May 8, 2019                  [Page 8]
               Operation: Galois/Counter Mode (GCM) and GMAC.", NIST
               Special Publication 800-38D, November 2007.
 
-Appendix A.  Test Cases
+   [tightness]
+              Chatterjee, S., Menezes, A., and P. Sarkar, "Another Look
+              at Tightness", Proceedings of SAC 2011, Lecture Notes in
+              Computer Science 7118, August 2011.
 
-   ...
+Appendix A.  Test Vectors
+
+A.1.  Nonce-Based Authenticated Encryption Example
+
+  Input
+  -----
+  Key:
+  000  80 81 82 83 84 85 86 87 88 89 8a 8b 8c 8d 8e 8f  ................
+  016  90 91 92 93 94 95 96 97 98 99 9a 9b 9c 9d 9e 9f  ................
+  032  a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 aa ab ac ad ae af  ................
+  048  b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 ba bb bc bd be bf  ................
+
+
+
+Madden                     Expires May 8, 2019                 [Page 11]
+
+                             Generalised SIV               November 2018
+
+
+  Plaintext:
+  000  4c 61 64 69 65 73 20 61 6e 64 20 47 65 6e 74 6c  Ladies and Gentl
+  016  65 6d 65 6e 20 6f 66 20 74 68 65 20 63 6c 61 73  emen of the clas
+  032  73 20 6f 66 20 27 39 39 3a 20 49 66 20 49 20 63  s of '99: If I c
+  048  6f 75 6c 64 20 6f 66 66 65 72 20 79 6f 75 20 6f  ould offer you o
+  064  6e 6c 79 20 6f 6e 65 20 74 69 70 20 66 6f 72 20  nly one tip for
+  080  74 68 65 20 66 75 74 75 72 65 2c 20 73 75 6e 73  the future, suns
+  096  63 72 65 65 6e 20 77 6f 75 6c 64 20 62 65 20 69  creen would be i
+  112  74 2e                                            t.
+
+  Nonce:
+  000  50 51 52 53 c0 c1 c2 c3 c4 c5 c6 c7              PQRS........
+
+  IV:
+  000  40 41 42 43 44 45 46 47                          @ABCDEFG
+
+  S2V[HMAC-SHA256]
+  ----------------
+  HMAC-SHA256(<zero>):
+      318dcd14 73a3c69c 643eb853 e66eb357
+      c5bcb67b cd96ea83 4af2a3c6 f462136f
+
+  dbl():
+      631b9a28 e7478d38 c87d70a7 ccdd66af
+      8b796cf7 9b2dd506 95e5478d e8c426de
+
+  HMAC-SHA256(AD1):
+      8b80c006 47844e6b 54617036 b1c09145
+      0ab8ad63 1e7ca653 326a8d4f e135dafb
+
+  xor:
+      e89b5a2e a0c3c353 9c1c0091 7d1df7ea
+      81c1c194 85517355 a78fcac2 09f1fc25
+
+  dbl():
+      d136b45d 418786a7 38380122 fa3befd5
+      03838329 0aa2e6ab 4f1f9584 13e3fc6f
+
+  HMAC-SHA256(Nonce):
+      7c07875c 75e0021c 6f58cbd2 052675e3
+      2690107a 1f618e40 34b79efc d23d3a57
+
+  xor:
+      ad313301 346784bb 5760caf0 ff1d9a36
+      25139353 15c368eb 7ba80b78 c1dec638
+
+  xorend:
+      4c616469 65732061 6e642047 656e746c
+
+
+
+Madden                     Expires May 8, 2019                 [Page 12]
+
+                             Generalised SIV               November 2018
+
+
+      656d656e 206f6620 74686520 636c6173
+      73206f66 20273939 3a204966 20492063
+      6f756c64 206f6666 65722079 6f75206f
+      6e6c7920 6f6e6520 74697020 666f7220
+      7468c811 55744012 f6de7b40 b985916e
+      f9444076 fd7362ac 1d871f88 691de1b7
+      b216
+
+  HMAC-SHA256(final):
+      28fdb5d4 d89e4860 11774606 5456a5df
+      924e8f4b 0f42bc77 a7415bd0 e0430628
+
+  XChaCha20
+  ---------
+  SIV:
+      28fdb5d4 d89e4860 11774606 5456a5df
+      924e8f4b 0f42bc77
+
+  Block Counter:
+      00000000
+
+  XChaCha20 Subkey:
+      70c5831f 36e439c1 b90e375e 2b98c3da
+      ef42de2e c120e1d1 2706af76 45381de1
+
+  XChaCha20 Nonce:
+      00000000 924e8f4b 0f42bc77
+
+  Output
+  ------
+  T || C:
+  000  28 fd b5 d4 d8 9e 48 60 11 77 46 06 54 56 a5 df  (.....H`.wF.TV..
+  016  92 4e 8f 4b 0f 42 bc 77 a7 41 5b d0 e0 43 06 28  .N.K.B.w.A[..C.(
+  032  26 53 ea bf c6 ae cc 14 d0 46 aa 7e 3c 0b a2 8e  &S.......F.~<...
+  048  fd 68 f3 d5 91 fc ac 6d b1 2e a2 3c f4 28 69 01  .h.....m...<.(i.
+  064  3b 2b e4 83 ce 08 8a f8 2d e4 29 3a 07 e2 40 07  ;+......-.):..@.
+  080  f3 7b d1 e3 78 81 a0 4b 11 5b 11 09 94 78 ae 34  .{..x..K.[...x.4
+  096  75 05 43 26 8e 57 0d 1f 27 f4 da fc 5a d8 71 97  u.C&.W..'...Z.q.
+  112  7f 08 b3 0b af df b5 3b 19 ef 34 2c d9 5c e7 91  .......;..4,.\..
+  128  5c b4 f6 79 db 64 0d 8e c4 8a 06 b6 f3 ef 50 8c  \..y.d........P.
+  144  53 30                                            S0
 
 Author's Address
+
+
+
+
+
+
+
+
+Madden                     Expires May 8, 2019                 [Page 13]
+
+                             Generalised SIV               November 2018
+
 
    Neil Madden
    ForgeRock
@@ -492,7 +738,6 @@ Author's Address
    United Kingdom
 
    Email: neil.madden@forgerock.com
-   URI:   https://neilmadden.blog/
 
 
 
@@ -501,4 +746,39 @@ Author's Address
 
 
 
-Madden                     Expires May 8, 2019                  [Page 9]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Madden                     Expires May 8, 2019                 [Page 14]

@@ -1,10 +1,12 @@
 <?xml version="1.0"?>
 <!DOCTYPE rfc PUBLIC "-//IETF//DTD RFC 2629//EN"
 "http://xml2rfc.tools.ietf.org/authoring/rfc2629.dtd" [
+<!ENTITY RFC2104 PUBLIC '' 'http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.2104.xml'>
 <!ENTITY RFC2119 PUBLIC '' 'http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml'>
 <!ENTITY RFC4493 PUBLIC '' 'http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.4493.xml'>
 <!ENTITY RFC5116 PUBLIC '' 'http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.5116.xml'>
 <!ENTITY RFC5297 PUBLIC '' 'http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.5297.xml'>
+<!ENTITY RFC6234 PUBLIC '' 'http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.6234.xml'>
 <!ENTITY RFC8174 PUBLIC '' 'http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml'>
 <!ENTITY RFC8439 PUBLIC '' 'http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.8439.xml'>
 
@@ -28,7 +30,7 @@
 
 <rfc category="std" docName="draft-madden-generalised-siv-01" ipr="trust200902">
     <front>
-        <title abbrev="Generalised SIV">Generalised Synthetic IV for non-AES ciphers and MACs</title>
+        <title abbrev="Generalised SIV">Synthetic IV (SIV) for non-AES ciphers and MACs</title>
 
         <author initials="N.E." surname="Madden" fullname="Neil Madden">
             <organization>ForgeRock</organization>
@@ -41,7 +43,6 @@
                     <country>United Kingdom</country>
                 </postal>
                 <email>neil.madden@forgerock.com</email>
-                <uri>https://neilmadden.blog/</uri>
             </address>
         </author>
 
@@ -70,7 +71,7 @@
                 target="RFC5297"/> provides either deterministic authenticated encryption (DAE) or
                 nonce-reuse misuse-resistant authenticated encryption (MRAE) <xref target="DAE"/>. 
                 It was originally specified for the combination of AES-CMAC for authenticity and 
-                AES-CTR for confidentiality. The 128-bit AES-CMAC tag is used as the (synthetic) 
+                AES-CTR for confidentiality. The 128-bit AES-CMAC tag is used as the 128-bit (synthetic) 
                 IV for AES-CTR. This document show how to apply SIV mode to ciphers and MACs with 
                 IV and tag lengths other than 128 bits, including where the IV and tag length may 
                 differ.
@@ -91,8 +92,8 @@
                     If an IV is reused, either by accident or through malicious action, then some
                     combination of the confidentiality and/or authenticity properties is usually
                     lost. For the popular Galois Counter Mode (GCM) <xref target="SP800-38D"/>, NIST
-                    states that &#8220;a breach of the requirement [...] for the uniqueness of the
-                    initialization strings may compromise the security assurance almost entirely&#8221; (section 3
+                    states that "a breach of the requirement [...] for the uniqueness of the
+                    initialization strings may compromise the security assurance almost entirely" (section 3
                     and Appendix A). The SIV mode of operation <xref target="RFC5297"/><xref target="SIV"/>,
                     when used with a unique nonce as part of the associated data, provides a measure
                     of protection against nonce reuse. If a nonce is reused with SIV mode then there
@@ -101,7 +102,7 @@
                     same associated data and nonce using the same key.
                 </t>
                 <t>
-                    While the SIV mode was specified as a generic composition of an IV-based encryption
+                    While the SIV mode is specified as a generic composition of an IV-based encryption
                     scheme and a pseudorandom function (PRF), most uses of the mode have concentrated
                     on the one concrete instantiation of the mode given at the time: AES-SIV. AES-SIV
                     is built entirely from the AES block cipher, using AES-CMAC <xref target="RFC4493"/>
@@ -109,11 +110,11 @@
                     as it requires only an AES encryption operation to implement all aspects of the
                     mode. It also has the convenient property that AES-CMAC produces a 128-bit tag, and
                     AES-CTR requires a 128-bit IV, which allows the tag to be used directly as the
-                    (synthetic) IV.
+                    (synthetic) IV. 
                 </t>
                 <t>
                     While AES-SIV has many attractive properties, there are good reasons for extending
-                    SIV to other ciphers and PRFs. As stated in the rationale for specifying ChaCha20
+                    SIV to other ciphers and PRFs. As stated in the rationale for adopting ChaCha20
                     and Poly1305 for IETF protocols <xref target="RFC8439"/>, overreliance on a single
                     cipher design, however good, may cause difficulties if a weakness is ever
                     discovered in AES. Secondly, AES can be difficult to implement efficiently in
@@ -127,7 +128,7 @@
         <section title="The Generic SIV Construction">
             <t>
                 The generic SIV construction is defined in terms two primitive functions:
-                <list>
+                <list style="numbers">
                     <t>A PRF, F*, that takes a vector of strings as input.</t>
                     <t>A length-preserving IV-based encryption scheme, E.</t>
                 </list>
@@ -138,7 +139,7 @@
             <t>
                 The following constants MUST be defined for any concrete instantiation of E and F*:
                 <list>
-                    <t>IV_LEN - the length of IV expected by E, in bits.</t>
+                    <t>IV_LEN - the length of IV/nonce expected by E, in bits.</t>
                     <t>TAG_LEN - the length of the output tag produced by F*, in bits.</t>
                     <t>PRF_KEY_LEN - the length of key required for F*, in bits.</t>
                     <t>CIPHER_KEY_LEN - the length of key required for E, in bits.</t>
@@ -152,9 +153,9 @@
             <section title="Encryption">
                 <t>
                     Encryption takes as input a key, K, a plaintext P, and zero or more associated
-                    data blocks to be authenticated but not encrypted. The key K MUST be as long
+                    data headers to be authenticated but not encrypted. The key K MUST be as long
                     as the sum of the key length of F* and the key length of E. For example, if
-                    F* requires a 256-bit key and E requires a 128-bit key, then K MUST be
+                    F* requires a 256-bit key and E requires a 128-bit key, then K must be
                     384 bits long.
                 </t>
                 <t>
@@ -317,6 +318,8 @@ SIV-DECRYPT[F*,E](K, Z, AD1, ..., ADn) {
                     appropriate doubling operation for TAG_LEN, and xorend is defined as in
                     <xref target="RFC5297"/>. The constant &lt;zero&gt; is the TAG_LEN sequence of
                     all zero bits, and &lt;one&gt; is TAG_LEN-1 zero bits followed by a single 1 bit.
+                    The function pad(X) pads the input to TAG_LEN bits by appending a single 1 bit
+                    followed by as many 0 bits as necessary.
                 </t>
                 <figure>
                     <artwork><![CDATA[
@@ -356,41 +359,138 @@ S2V[F](K, S1, ..., Sn) {
             </section>
         </section>
 
+        <section anchor="XChaCha20-HMAC-SHA256-SIV" title="XChaCha20-HMAC-SHA256-SIV">
+            <t>
+                ChaCha20 is a stream cipher that has been adopted for use in IETF protocols by
+                <xref target="RFC8439"/>. It has several attractive properties, most notably that
+                it can be implemented efficiently in software and is relatively easy to make
+                resistant to cache-timing side-channel attacks. As originally specified, ChaCha20
+                takes a 256-bit key and a 64-bit nonce, which was extended to 96-bits when adopted
+                by the IETF. A 96-bit nonce is too small to be safely generated randomly (or
+                pseudorandomly as in SIV) without artificially limiting the number of messages
+                that can be encrypted with a single key. To address this problem, an extended nonce
+                variant known as XChaCha20 <xref target="I-D.arciszewski-xchacha"/> has been
+                proposed, which increase the nonce to 192-bits. This makes it an excellent choice
+                for an SIV instantiation, providing a MRAE cipher mode alternative to AES.
+            </t>
+
+            <t>
+                In principle, any PRF that produces at least a 192-bit output could be used with
+                XChaCha20. For concreteness, we specify the use of HMAC <xref target="RFC2104"/>
+                with the SHA-256 secure hash function <xref target="RFC6234"/> as HMAC-SHA256 is
+                widely implemented. The S2V function of section 2.3 is used to allow HMAC-SHA256
+                to take a vector of strings as input, with the primitive polynomial for GF(2^256)
+                used for point doubling and the leftmost 192 bits of the S2V[HMAC-SHA256] tag used
+                as the synthetic IV for XChaCha20.
+            </t>
+
+            <t>
+                The encryption and decryption procedures are as described in sections 2.1 and 2.2 above,
+                with the following constant values:
+                <list>
+                    <t>PRF_KEY_LEN = 256 bits.</t>
+                    <t>CIPHER_KEY_LEN = 256 bits.</t>
+                    <t>IV_LEN = 192 bits.</t>
+                    <t>TAG_LEN = 256 bits.</t>
+                </list>
+            </t>
+
+            <t>
+                Test vectors for XChaCha20-HMAC-SHA256-SIV are provided in Appendix A.
+            </t>
+
+        </section>
+
         <section anchor="IANA" title="IANA considerations">
             <?rfc subcompact="yes" ?>
-            <t>This section registers AEAD algorithms as per the registry established in
-                <xref target="RFC5116"/>.</t>
+            <t>
+                This section registers AEAD algorithms as per the registry established in
+                <xref target="RFC5116"/>. As specified in <xref target="RFC5297"/> section
+                6, the interface of RFC 5116 only allows a single associated data (AD) component.
+                When SIV is accessed via this interface, multiple AD components must be
+                marshalled into a single string prior to calling the SIV procedures.
+            </t>
             <t><cref source="N. Madden">Need to get IANA to assign numbers for these.</cref></t>
 
             <section title="AEAD_XCHACHA20_SIV_HMAC_SHA256">
                 <t>
-                    The XCHACHA20-SIV-HMAC-SHA256 algorithm is an instantiation of the generalised
+                    The AEAD_XCHACHA20_SIV_HMAC_SHA256 algorithm is an instantiation of the generalised
                     SIV mode described in Sections 2.1 and 2.2 with the XChaCha20 extended-nonce
                     stream cipher <xref target="I-D.arciszewski-xchacha"/> and HMAC-SHA256 as the
-                    PRF. The following constants apply to this mode:
-                    <list>
-                        <t>PRF_KEY_LEN = 256 bits</t>
-                        <t>CIPHER_KEY_LEN = 256 bits</t>
-                        <t>IV_LEN = 192 bits</t>
-                        <t>TAG_LEN = 256 bits</t>
-                    </list>
+                    PRF, as described in Section 3. XChaCha20 uses a 32-bit block counter and
+                    a 512-bit block size, therefore the maximum size of plaintext that can be
+                    encrypted in a single invocation is 2^38 octets, around 256 GB. The ciphertext
+                    length is equal to the length of the plaintext plus 32 octets for the HMAC-SHA256
+                    authentication tag (of which the leftmost 24 octets comprise the SIV).
                 </t>
                 <t>The input and output lengths for AEAD_XCHACHA20_SIV_HMAC_SHA256 as defined by
                     <xref target="RFC5116"/> are:
                     <list>
                         <t>K_LEN is 64 octets.</t>
-                        <t>P_MAX is ...</t>
+                        <t>P_MAX is 2^38 octets.</t>
                         <t>A_MAX is unlimited.</t>
                         <t>N_MIN is 1 octet.</t>
                         <t>N_MAX is unlimited.</t>
-                        <t>C_MAX is ....</t>
+                        <t>C_MAX is 2^38 + 32 octets.</t>
                     </list>
                 </t>
             </section>
         </section>
 
         <section anchor="security" title="Security Considerations">
-            <t>Blah</t>
+            <t>The security considerations of <xref target="RFC5297"/> apply here.</t>
+
+            <t>
+                The security proofs for SIV <xref target="DAE"/> require that F* (and F if
+                constructing F* using S2V) behaves as a pseudorandom function (PRF). E must
+                be a length-preserving semantically-secure encryption scheme.
+            </t>
+
+            <t><cref source="N. Madden">Section 4 of the DAE reference says that the encryption
+                    scheme E (represented by a Greek upper-case pi symbol) is assumed to be
+                    length-preserving for simplicity. I cannot see where this assumption is
+                    discharged, so I assume that it is a requirement.</cref></t>
+
+            <t>
+                It is RECOMMENDED that SIV mode is always used with a unique random component included
+                as the last element of the header (associated data) to ensure semantic security. While
+                SIV mode loses a minimal amount of security if this component is omitted (or accidentally
+                reused), an attacker in this case is able to determine if the same plaintext has been
+                encrypted under the same key and with the same associated data. Depending on the application
+                this may still be a significant loss of confidentiality. For example, a service that
+                produces yes/no answers to questions would lose all confidentiality of its responses in 
+                this case. The misuse resistance of SIV should be considered a failsafe and not as a
+                way to do without a nonce.
+            </t>
+
+            <t>
+                The requirement that E be length-preserving means that the ciphertext produced by SIV
+                mode will be equal in length to the input plaintext, plus the authentication tag (which
+                is of fixed size for any concrete instantiation of this mode). If the length of the
+                plaintext on its own may reveal information then care should be taken to obscure this
+                prior to encryption -- by padding to a known maximum length, for example. In the case
+                of the yes/no answer service the English words "yes" and "no" can be distinguished
+                purely by length, to give a simple example.
+            </t>
+
+            <t>
+                In <xref target="tightness"/>, Chatterjee, Menezes and Sarkar show an attack on SIV
+                within the multi-user setting. It is RECOMMENDED that concrete instantiations intended
+                for such use define a MAC_KEY_LENGTH of at least 256 bits or describe other countermeasures.
+            </t>
+
+            <t><cref source="N. Madden">The recommendation for a large MAC_KEY_LENGTH is based on the
+                    comment made by Daniel Bleichenbacher to the CFRG mailing list:
+                    https://mailarchive.ietf.org/arch/msg/cfrg/bnom-bt5wBPmdQfvbeYcus9gXP0</cref>
+            </t>
+
+            <t>
+                The number of components passed to any invocation of S2V (including the plaintext) must
+                not exceed TAG_LEN - 1. For example, a 128-bit PRF such as AES-CMAC should allow no more
+                than 127 components. For XChaCha20-HMAC-SHA256-SIV no more than 255 components should be 
+                allowed.
+            </t>
+            
         </section>
 
     </middle>
@@ -405,7 +505,9 @@ S2V[F](K, S1, ..., Sn) {
 
 
         <references title="Informative References">
+            &RFC2104;
             &RFC4493;
+            &RFC6234;
             &RFC8439;
           <reference anchor="DAE">
               <front>
@@ -460,12 +562,132 @@ S2V[F](K, S1, ..., Sn) {
               <seriesInfo name="HPL" value="HPL-98-135"/>
               <format target="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.365.1806&amp;rep=rep1&amp;type=pdf" type="PDF"/>
           </reference>
-                
-        </references>
 
-        <section anchor="TestCases" title="Test Cases">
-            <t>...</t>
-        </section>
+          <reference anchor="tightness">
+              <front>
+                  <title>Another Look at Tightness</title>
+                  <author surname="Chatterjee" initials="S.">
+                      <organization>Indian Institute of Science</organization>
+                  </author>
+                  <author surname="Menezes" initials="A.">
+                      <organization>University of Waterloo</organization>
+                  </author>
+                  <author surname="Sarkar" initials="P.">
+                      <organization>Indian Statistical Institute</organization>
+                  </author>
+                  <date month="August" year="2011"/>
+              </front>
+              <seriesInfo name="Proceedings of SAC 2011, Lecture Notes in Computer Science" value="7118"/>
+          </reference>
+                
+      </references>
+
+      <section title="Test Vectors">
+          <section title="Nonce-Based Authenticated Encryption Example">
+              <figure>
+                  <artwork><![CDATA[
+Input
+-----
+Key:
+000  80 81 82 83 84 85 86 87 88 89 8a 8b 8c 8d 8e 8f  ................
+016  90 91 92 93 94 95 96 97 98 99 9a 9b 9c 9d 9e 9f  ................
+032  a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 aa ab ac ad ae af  ................
+048  b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 ba bb bc bd be bf  ................
+
+Plaintext:
+000  4c 61 64 69 65 73 20 61 6e 64 20 47 65 6e 74 6c  Ladies and Gentl
+016  65 6d 65 6e 20 6f 66 20 74 68 65 20 63 6c 61 73  emen of the clas
+032  73 20 6f 66 20 27 39 39 3a 20 49 66 20 49 20 63  s of '99: If I c
+048  6f 75 6c 64 20 6f 66 66 65 72 20 79 6f 75 20 6f  ould offer you o
+064  6e 6c 79 20 6f 6e 65 20 74 69 70 20 66 6f 72 20  nly one tip for
+080  74 68 65 20 66 75 74 75 72 65 2c 20 73 75 6e 73  the future, suns
+096  63 72 65 65 6e 20 77 6f 75 6c 64 20 62 65 20 69  creen would be i
+112  74 2e                                            t.
+
+Nonce:
+000  50 51 52 53 c0 c1 c2 c3 c4 c5 c6 c7              PQRS........
+
+IV:
+000  40 41 42 43 44 45 46 47                          @ABCDEFG
+
+S2V[HMAC-SHA256]
+----------------
+HMAC-SHA256(<zero>):
+    318dcd14 73a3c69c 643eb853 e66eb357 
+    c5bcb67b cd96ea83 4af2a3c6 f462136f
+
+dbl():
+    631b9a28 e7478d38 c87d70a7 ccdd66af
+    8b796cf7 9b2dd506 95e5478d e8c426de
+  
+HMAC-SHA256(AD1):
+    8b80c006 47844e6b 54617036 b1c09145
+    0ab8ad63 1e7ca653 326a8d4f e135dafb
+
+xor:
+    e89b5a2e a0c3c353 9c1c0091 7d1df7ea
+    81c1c194 85517355 a78fcac2 09f1fc25
+
+dbl():
+    d136b45d 418786a7 38380122 fa3befd5
+    03838329 0aa2e6ab 4f1f9584 13e3fc6f
+
+HMAC-SHA256(Nonce):
+    7c07875c 75e0021c 6f58cbd2 052675e3
+    2690107a 1f618e40 34b79efc d23d3a57
+
+xor:
+    ad313301 346784bb 5760caf0 ff1d9a36
+    25139353 15c368eb 7ba80b78 c1dec638
+
+xorend:
+    4c616469 65732061 6e642047 656e746c
+    656d656e 206f6620 74686520 636c6173
+    73206f66 20273939 3a204966 20492063
+    6f756c64 206f6666 65722079 6f75206f
+    6e6c7920 6f6e6520 74697020 666f7220
+    7468c811 55744012 f6de7b40 b985916e
+    f9444076 fd7362ac 1d871f88 691de1b7
+    b216
+
+HMAC-SHA256(final):
+    28fdb5d4 d89e4860 11774606 5456a5df
+    924e8f4b 0f42bc77 a7415bd0 e0430628
+
+XChaCha20
+---------
+SIV:
+    28fdb5d4 d89e4860 11774606 5456a5df
+    924e8f4b 0f42bc77
+
+Block Counter:
+    00000000
+
+XChaCha20 Subkey:
+    70c5831f 36e439c1 b90e375e 2b98c3da
+    ef42de2e c120e1d1 2706af76 45381de1
+
+XChaCha20 Nonce:
+    00000000 924e8f4b 0f42bc77
+
+Output
+------
+T || C:
+000  28 fd b5 d4 d8 9e 48 60 11 77 46 06 54 56 a5 df  (.....H`.wF.TV..
+016  92 4e 8f 4b 0f 42 bc 77 a7 41 5b d0 e0 43 06 28  .N.K.B.w.A[..C.(
+032  26 53 ea bf c6 ae cc 14 d0 46 aa 7e 3c 0b a2 8e  &S.......F.~<...
+048  fd 68 f3 d5 91 fc ac 6d b1 2e a2 3c f4 28 69 01  .h.....m...<.(i.
+064  3b 2b e4 83 ce 08 8a f8 2d e4 29 3a 07 e2 40 07  ;+......-.):..@.
+080  f3 7b d1 e3 78 81 a0 4b 11 5b 11 09 94 78 ae 34  .{..x..K.[...x.4
+096  75 05 43 26 8e 57 0d 1f 27 f4 da fc 5a d8 71 97  u.C&.W..'...Z.q.
+112  7f 08 b3 0b af df b5 3b 19 ef 34 2c d9 5c e7 91  .......;..4,.\..
+128  5c b4 f6 79 db 64 0d 8e c4 8a 06 b6 f3 ef 50 8c  \..y.d........P.
+144  53 30                                            S0
+                      ]]></artwork>
+              </figure>
+          </section>
+      </section>
+
     </back>
 </rfc>
 
