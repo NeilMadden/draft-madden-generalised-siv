@@ -56,7 +56,17 @@ int main(void)
     fwrite(buf, sizeof(buf), 1, out);
     fclose(out);
 
-    return 0;
+    ret = xchacha20siv_decrypt(KEY, buf, PT_LEN, ad, 2);
+
+    if (ret != 0) {
+        fprintf(stderr, "Failed to decrypt\n");
+    } else {
+        out = fopen("/tmp/plaintext.bin", "wb");
+        fwrite(buf + TAG_LEN, PT_LEN, 1, out);
+        fclose(out);
+    }
+
+    return ret;
 }
 
 void hmac_sha256(const void *key, const void *data, size_t len, void *tag)
