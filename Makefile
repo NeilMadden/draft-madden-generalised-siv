@@ -1,9 +1,10 @@
-VERSION=00
+VERSION=01
 BASENAME=draft-madden-generalised-siv-$(VERSION)
 
 # Use 'pip install xml2rfc'
 
-all: generalised-siv.xml
+all: generalised-siv.xml 
+	cp generalised-siv.xml $(BASENAME).xml
 	xml2rfc generalised-siv.xml --text --html --basename $(BASENAME)
 
 xchacha20siv.o: xchacha20siv.c xchacha20siv.h
