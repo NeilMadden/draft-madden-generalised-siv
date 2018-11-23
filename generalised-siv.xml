@@ -40,7 +40,7 @@
             </address>
         </author>
 
-        <date day="22" month="November" year="2018"/>
+        <date day="23" month="November" year="2018"/>
 
         <area>Security</area>
         <!-- <workgroup>CFRG</workgroup> -->
@@ -127,8 +127,8 @@
                     <t>A length-preserving IV-based encryption scheme, E.</t>
                 </list>
                 The S2V function can be used to build F* from a PRF, F, that takes a single
-                string input. The generalised version of this function is described in the next
-                section.
+                string input. The generalised version of this function is described in
+                <xref target="s2v"/>.
             </t>
             <t>
                 The following constants MUST be defined for any concrete instantiation of E and F*:
@@ -144,7 +144,7 @@
                 We denote the encryption operation of E as E.encrypt(key, iv, plaintext), and the
                 decryption operation as E.decrypt(key, iv, ciphertext).
             </t>
-            <section title="Encryption">
+            <section anchor="encryption" title="Encryption">
                 <t>
                     Encryption takes as input a key, K, a plaintext P, and zero or more associated
                     data headers to be authenticated but not encrypted. The key K MUST be as long
@@ -177,7 +177,7 @@ SIV-ENCRYPT[F*,E](K, P, AD1, ..., ADn) {
                 </figure>
             </section>
 
-            <section title="Decryption">
+            <section anchor="decryption" title="Decryption">
                 <t>
                     Decryption takes as input a key, K, an authenticated ciphertext Z, and zero 
                     or more associated data blocks to be authenticated but not decrypted.
@@ -216,7 +216,7 @@ SIV-DECRYPT[F*,E](K, Z, AD1, ..., ADn) {
                 </figure>
             </section>
 
-            <section title="Generalised S2V">
+            <section anchor="s2v" title="Generalised S2V">
                 <t>
                     SIV requires a PRF that takes a vector of strings as input, while most
                     PRFs in current use are designed to only take a single string. In principle,
@@ -304,7 +304,7 @@ SIV-DECRYPT[F*,E](K, Z, AD1, ..., ADn) {
                 </texttable>
                 <t>
                     It is recommended that the conditional XOR be performed in constant time.
-                    A constant time bit-sliced implementation is provided in Appendix A.
+                    A constant time bit-sliced implementation is provided in <xref target="refimpl"/>.
                 </t>
                 <t>
                     The S2V algorithm parameterised over a particular PRF, F, written S2V[F] is
@@ -364,7 +364,7 @@ S2V[F](K, S1, ..., Sn) {
                 pseudorandomly as in SIV) without artificially limiting the number of messages
                 that can be encrypted with a single key. To address this problem, an extended nonce
                 variant known as XChaCha20 <xref target="I-D.arciszewski-xchacha"/> has been
-                proposed, which increase the nonce to 192-bits. This makes it an excellent choice
+                proposed, which increases the nonce to 192-bits. This makes it an excellent choice
                 for an SIV instantiation, providing a MRAE cipher mode alternative to AES.
             </t>
 
@@ -372,15 +372,15 @@ S2V[F](K, S1, ..., Sn) {
                 In principle, any PRF that produces at least a 192-bit output could be used with
                 XChaCha20. For concreteness, we specify the use of HMAC <xref target="RFC2104"/>
                 with the SHA-256 secure hash function <xref target="RFC6234"/> as HMAC-SHA256 is
-                widely implemented. The S2V function of section 2.3 is used to allow HMAC-SHA256
+                widely implemented. The S2V function of <xref target="s2v"/> is used to allow HMAC-SHA256
                 to take a vector of strings as input, with the primitive polynomial for GF(2^256)
                 used for point doubling and the leftmost 192 bits of the S2V[HMAC-SHA256] tag used
                 as the synthetic IV for XChaCha20.
             </t>
 
             <t>
-                The encryption and decryption procedures are as described in sections 2.1 and 2.2 above,
-                with the following constant values:
+                The encryption and decryption procedures are as described in <xref target="encryption"/> 
+                and <xref target="decryption"/> above, with the following constant values:
                 <list>
                     <t>PRF_KEY_LEN = 256 bits.</t>
                     <t>CIPHER_KEY_LEN = 256 bits.</t>
@@ -390,7 +390,8 @@ S2V[F](K, S1, ..., Sn) {
             </t>
 
             <t>
-                Test vectors for XChaCha20-HMAC-SHA256-SIV are provided in Appendix A.
+                Test vectors for XChaCha20-HMAC-SHA256-SIV are provided in <xref target="TestVectors"/>
+                and sample code in <xref target="refimpl"/>.
             </t>
 
         </section>
@@ -576,7 +577,7 @@ S2V[F](K, S1, ..., Sn) {
                 
       </references>
 
-      <section title="Test Vectors">
+      <section anchor="TestVectors" title="Test Vectors">
           <section title="Nonce-Based Authenticated Encryption Example">
               <figure>
                   <artwork><![CDATA[
@@ -598,10 +599,10 @@ Plaintext:
 096  63 72 65 65 6e 20 77 6f 75 6c 64 20 62 65 20 69  creen would be i
 112  74 2e                                            t.
 
-Nonce:
+AD1:
 000  50 51 52 53 c0 c1 c2 c3 c4 c5 c6 c7              PQRS........
 
-IV:
+AD2 (Nonce):
 000  40 41 42 43 44 45 46 47                          @ABCDEFG
 
 S2V[HMAC-SHA256]
@@ -626,7 +627,7 @@ dbl():
     d136b45d 418786a7 38380122 fa3befd5
     03838329 0aa2e6ab 4f1f9584 13e3fc6f
 
-HMAC-SHA256(Nonce):
+HMAC-SHA256(AD2):
     7c07875c 75e0021c 6f58cbd2 052675e3
     2690107a 1f618e40 34b79efc d23d3a57
 
@@ -657,11 +658,11 @@ SIV:
 Block Counter:
     00000000
 
-XChaCha20 Subkey:
+ChaCha20 Derived Subkey:
     70c5831f 36e439c1 b90e375e 2b98c3da
     ef42de2e c120e1d1 2706af76 45381de1
 
-XChaCha20 Nonce:
+ChaCha20 Derived Nonce:
     00000000 924e8f4b 0f42bc77
 
 Output
@@ -678,6 +679,230 @@ T || C:
 128  5c b4 f6 79 db 64 0d 8e c4 8a 06 b6 f3 ef 50 8c  \..y.d........P.
 144  53 30                                            S0
                       ]]></artwork>
+              </figure>
+          </section>
+      </section>
+
+      <section anchor="refimpl" title="Sample Code">
+          <t>
+              The following C99 code implements XChaCha20-HMAC-SHA256-SIV as described
+              in Section 3. It assumes the existence of the following two functions
+              that implement XChaCha20 and HMAC-SHA256 respectively. These are omitted
+              for brevity as those algorithms are described elsewhere.
+              <list>
+                  <t>void xchacha20(void *key, void *iv, void *data, size_t len);</t>
+                  <t>void hmac_sha256(void *key, void *data, size_t len, void *tag);</t>
+              </list>
+          </t>
+          <t>
+              The code has been written for simplicity and faithfulness to the description
+              in the text rather than for performance or robustness. Error cases are
+              largely ignored.
+          </t>
+          <section title="xchacha20siv.h">
+              <figure>
+                  <artwork><![CDATA[
+/*
+ * xchacha20siv.h
+ */
+
+#ifndef _XCHACHA20SIV_H
+#define _XCHACHA20SIV_H
+
+#include <unistd.h>
+
+static const size_t PRF_KEY_LEN     = 32;
+static const size_t CIPHER_KEY_LEN  = 32;
+static const size_t IV_LEN          = 24;
+static const size_t TAG_LEN         = 32;
+
+typedef struct {
+    const unsigned char *data;
+    size_t len;
+} assoc_data_t;
+
+/* 
+ * Required hmac_sha256 function, takes 32-byte key and arbitrary length 
+ * data and writes 32-byte tag into *tag.
+ */
+void hmac_sha256(const void *key, const void *data, size_t len, 
+        void *tag);
+
+/*
+ * XChaCha20 encrypt/decrypt in-place. Block counter is set to 0.
+ */
+void xchacha20(const void *key, const void *iv, void *data, 
+        size_t len);
+
+/*
+ * xchacha20siv_encrypt --
+ *
+ *      Encrypts and authenticates the given plaintext in-place. The 
+ *      plaintext buffer must be pt_len + TAG_LEN bytes in size with 
+ *      the actual plaintext starting at TAG_LEN offset. The HMAC-SHA256
+ *      tag will be prepended to the encrypted ciphertext.
+ */
+void xchacha20siv_encrypt(
+        const void *key, void *plaintext, size_t pt_len, 
+        const assoc_data_t *ad, size_t ad_len);
+int xchacha20siv_decrypt(
+        const void *key, void *ciphertext, size_t ct_len,
+        const assoc_data_t *ad, size_t ad_len);
+
+
+#endif /* _XCHACHA20SIV_H */ ]]>
+                  </artwork>
+              </figure>
+          </section>
+
+          <section title="xchacha20siv.c">
+              <figure>
+                  <artwork><![CDATA[
+/*
+ * xchacha20siv.c
+ */
+
+#include "xchacha20siv.h"
+#include <unistd.h>
+#include <string.h>
+
+static const unsigned char ZERO[TAG_LEN] = { 0 };
+static const unsigned char ONE[TAG_LEN]  = { 0, [TAG_LEN-1] = 1 };
+
+/* Primitive polynomial conditional XOR constant for GF(2^256) */
+static const unsigned char PRIM_POLY[2] = { 0x04, 0x25 };
+
+static void xor(unsigned char *x, const unsigned char *y, size_t len)
+{
+    size_t i;
+
+    for (i = 0; i < len; ++i) {
+        x[i] ^= y[i];
+    }
+}
+
+static void xorend(unsigned char *x, size_t x_len, 
+                   const unsigned char *y, size_t y_len)
+{
+    size_t i;
+    size_t diff = x_len - y_len;
+
+    for (i = 0; i < y_len; ++i) {
+        x[diff + i] ^= y[i];
+    }
+}
+
+static void dbl(unsigned char d[TAG_LEN])
+{
+    unsigned char carry = 0;
+    unsigned char tmp;
+    unsigned char mask;
+    size_t i;
+
+    // Left-shift
+    for (i = TAG_LEN; i-- > 0;) {
+        tmp = (d[i] << 1) | carry;
+        carry = (d[i] >> 7) & 0x01;
+        d[i] = tmp;
+    }
+
+    // Bit-sliced constant time conditional xor
+    mask = -carry;
+    d[TAG_LEN - 2] ^= PRIM_POLY[0] & mask;
+    d[TAG_LEN - 1] ^= PRIM_POLY[1] & mask;
+}
+
+static void s2v(const void *key, void *plaintext, size_t pt_len, 
+                const assoc_data_t *ad, size_t ad_len, void *tag)
+{
+    unsigned char d[TAG_LEN];
+    unsigned char t[TAG_LEN];
+    unsigned char pad[TAG_LEN];
+    size_t i;
+
+    memset(pad, 0, TAG_LEN);
+
+    if (ad_len == 0 && plaintext == NULL) {
+        hmac_sha256(key, ONE, TAG_LEN, tag);
+        return;
+    }
+
+    hmac_sha256(key, ZERO, TAG_LEN, d);
+    for (i = 0; i < ad_len; ++i) {
+        dbl(d);
+        hmac_sha256(key, ad[i].data, ad[i].len, t);
+        xor(d, t, TAG_LEN);
+    }
+
+    if (pt_len >= TAG_LEN) {
+        xorend(plaintext, pt_len, d, TAG_LEN);
+        hmac_sha256(key, plaintext, pt_len, t);
+        /* Undo the XOR to leave plaintext as it was. */
+        xorend(plaintext, pt_len, d, TAG_LEN);
+    } else {
+        dbl(d);
+        memcpy(pad, plaintext, pt_len);
+        xor(d, pad, TAG_LEN);
+        hmac_sha256(key, d, TAG_LEN, t);
+    }
+
+    memcpy(tag, t, TAG_LEN);
+}
+
+void xchacha20siv_encrypt(
+        const void *key, void *plaintext, size_t pt_len, 
+        const assoc_data_t *ad, size_t ad_len)
+{
+
+    const void *macKey = key;
+    const void *encKey = key + PRF_KEY_LEN;
+    unsigned char tag[TAG_LEN];
+    unsigned char siv[IV_LEN];
+
+    s2v(macKey, plaintext + TAG_LEN, pt_len, ad, ad_len, tag);
+    memcpy(siv, tag, IV_LEN);
+
+    xchacha20(encKey, siv, plaintext + TAG_LEN, pt_len);
+    memcpy(plaintext, tag, TAG_LEN);
+}
+
+static int ct_cmp(const unsigned char *x, const unsigned char *y, 
+        size_t len)
+{
+    size_t i;
+    unsigned char c = 0;
+
+    for (i = 0; i < len; ++i) {
+        c |= x[i] ^ y[i];
+    }
+
+    return c;
+}
+
+int xchacha20siv_decrypt(
+        const void *key, void *ciphertext, size_t ct_len, 
+        const assoc_data_t *ad, size_t ad_len)
+{
+    const void *macKey = key;
+    const void *encKey = key + PRF_KEY_LEN;
+    unsigned char computed_tag[TAG_LEN];
+    unsigned char siv[IV_LEN];
+    const void *tag = ciphertext;
+
+    memcpy(siv, tag, IV_LEN);
+    xchacha20(encKey, siv, ciphertext + TAG_LEN, ct_len);
+
+    s2v(macKey, ciphertext + TAG_LEN, ct_len, ad, ad_len, computed_tag);
+
+    if (ct_cmp(computed_tag, tag, TAG_LEN) != 0) {
+        /* Beware! Compilers may eliminate these calls. */
+        memset(ciphertext, 0, ct_len + TAG_LEN);
+        memset(computed_tag, 0, TAG_LEN);
+        return -1;
+    }
+
+    return 0;
+} ]]></artwork>
               </figure>
           </section>
       </section>
